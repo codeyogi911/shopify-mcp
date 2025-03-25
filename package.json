@@ -1,0 +1,43 @@
+{
+  "name": "shopify-chat",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "shopify-chat": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "tsc && chmod 755 build/index.js",
+    "start": "node build/index.js",
+    "dev": "tsc --watch & node --watch build/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "inspect": "npx @modelcontextprotocol/inspector node build/index.js"
+  },
+  "keywords": [
+    "shopify",
+    "graphql",
+    "mcp",
+    "model-context-protocol",
+    "ai"
+  ],
+  "author": "Shashwat Jain",
+  "license": "ISC",
+  "description": "A Model Context Protocol server for Shopify GraphQL API",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.7.0",
+    "@shopify/shopify-api": "^11.11.1",
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "graphql-request": "^6.1.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.13",
+    "typescript": "^5.8.2"
+  }
+}
