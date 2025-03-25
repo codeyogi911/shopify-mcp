@@ -5,6 +5,7 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
 import { registerProductTools } from './shopify-products.js';
+import { registerOrdersTools } from './shopify-orders.js';
 
 dotenv.config();
 
@@ -54,13 +55,16 @@ server.resource('root', 'shopify://', async (uri) => {
   return {
     contents: [{
       uri: uri.href,
-      text: `# Simple Shopify Server\n\nThis is a simplified version of the Shopify server.\n\nUse the "Browse Products" tool to view your products.\n\nParameters:\n- limit: Number of products to retrieve (default: 10)\n- include_inventory: Set to true to include inventory details\n- product_id: View a specific product by ID`
+      text: `# Simple Shopify Server\n\nThis is a simplified version of the Shopify server.\n\n## Available Tools\n\n### 1. Browse Products\nUse the "Browse Products" tool to view your products and inventory.\n\nParameters:\n- limit: Number of products to retrieve (default: 10)\n- include_inventory: Set to true to include inventory details\n- product_id: View a specific product by ID\n\n### 2. Browse Orders\nUse the "Browse Orders" tool to view and search your orders.\n\nParameters:\n- limit: Number of orders to retrieve (default: 10)\n- status: Filter by order status (any, open, closed, cancelled)\n- order_id: View a specific order by ID\n- customer_email: Filter orders by customer email\n- created_at_min: Minimum creation date in ISO format (e.g., 2023-01-01)\n- created_at_max: Maximum creation date in ISO format (e.g., 2023-12-31)`
     }]
   };
 });
 
 // Register all product and inventory related tools from the separate file
 registerProductTools(server, session);
+
+// Register orders related tools from the separate file
+registerOrdersTools(server, session);
 
 // Simple entry point
 async function main() {

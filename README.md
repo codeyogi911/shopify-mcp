@@ -1,13 +1,14 @@
 # Shopify MCP Server
 
-A Model Context Protocol (MCP) server that connects your Shopify store data to AI assistants like Claude. This server allows AI assistants to directly browse your products and inventory details from your Shopify store.
+A Model Context Protocol (MCP) server that connects your Shopify store data to AI assistants like Claude. This server allows AI assistants to directly browse your products, inventory details, and orders from your Shopify store.
 
 ## Features
 
 - **Browse Products**: Retrieve and view product listings from your Shopify store
 - **View Product Details**: Get comprehensive information about specific products
 - **Inventory Management**: Check inventory levels across locations for products and variants
-- **Combined Tool Interface**: Single versatile tool with flexible parameters
+- **Order Management**: Browse and search orders with various filters
+- **Combined Tool Interface**: Each feature uses a single versatile tool with flexible parameters
 
 ## Prerequisites
 
@@ -54,13 +55,15 @@ A Model Context Protocol (MCP) server that connects your Shopify store data to A
 
 ## Tool Usage
 
-The server provides a single `browse_products` tool with multiple parameters:
+The server provides two main tools with multiple parameters:
+
+### 1. browse_products
 
 - **limit**: Number of products to retrieve (default: 10, max: 50)
 - **include_inventory**: Set to `true` to include detailed inventory information (default: false)
 - **product_id**: Specify a product ID to view detailed information about a specific product
 
-### Examples
+#### Examples
 
 1. **List 5 products**:
    Use the tool with `limit: 5`
@@ -70,6 +73,32 @@ The server provides a single `browse_products` tool with multiple parameters:
 
 3. **Browse products with inventory information**:
    Use the tool with `limit: 3, include_inventory: true`
+
+### 2. browse_orders
+
+- **limit**: Number of orders to retrieve (default: 10, max: 50)
+- **status**: Filter orders by status (`any`, `open`, `closed`, `cancelled`)
+- **order_id**: Specify an order ID to view detailed information about a specific order
+- **customer_email**: Filter orders by customer email
+- **created_at_min**: Filter orders created on or after this date (ISO format, e.g., "2023-01-01")
+- **created_at_max**: Filter orders created on or before this date (ISO format, e.g., "2023-12-31")
+
+#### Examples
+
+1. **List recent orders**:
+   Use the tool with `limit: 5`
+
+2. **View specific order details**:
+   Use the tool with `order_id: "123456789"`
+
+3. **Search for customer orders**:
+   Use the tool with `customer_email: "customer@example.com"`
+
+4. **Filter orders by date range**:
+   Use the tool with `created_at_min: "2023-01-01", created_at_max: "2023-12-31"`
+
+5. **Browse open orders**:
+   Use the tool with `status: "open", limit: 10`
 
 ## Development
 
