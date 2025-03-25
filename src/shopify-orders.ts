@@ -158,129 +158,131 @@ export function registerOrdersTools(server: any) {
         `;
         
         try {
-          // Execute the GraphQL query with the simpler format
-          const { data, errors } = await server.shopify.clients.Graphql().request(
+          // Execute the GraphQL query with simple parameters
+          const response = await server.shopify.clients.Graphql().request(
             query,
             {
-              variables
+              variables: { 
+                first: Number(limit) || 10,
+                query: variables.query 
+              } 
             }
           );
           
-          console.error('Orders API response received');
+          console.error('Orders API response received, type:', typeof response);
           
-          // For debugging
-          if (errors) {
-            console.error('GraphQL errors:', errors);
-            return {
-              content: [{ 
-                type: 'text', 
-                text: `# Error\n\nFailed to retrieve orders: ${errors[0]?.message || 'Unknown GraphQL error'}`
-              }]
-            };
-          }
-          
-          if (!data) {
-            console.error('Response data is undefined or null');
-            return {
-              content: [{ 
-                type: 'text', 
-                text: `# Error\n\nFailed to retrieve orders: API response data is undefined or null.`
-              }]
-            };
-          }
-          
-          // Extract the orders from the response
-          const orders = data.orders.edges.map((edge: any) => edge.node);
-          console.error(`Retrieved ${orders.length} orders`);
-          
-          if (orders.length === 0) {
-            return {
-              content: [{ 
-                type: 'text', 
-                text: `# No Orders Found\n\nNo orders were found matching your criteria.`
-              }]
-            };
-          }
-          
-          // Format orders information for display
-          let responseText = `# Shopify Orders\n\n`;
-          
-          if (queryFilters) {
-            responseText += `**Filters applied:** ${queryFilters}\n\n`;
-          }
-          
-          orders.forEach((order: any) => {
-            try {
-              const totalPrice = order.totalPriceSet?.shopMoney?.amount || 'N/A';
-              const currency = order.totalPriceSet?.shopMoney?.currencyCode || '';
-              
-              responseText += `## ${order.name}\n`;
-              responseText += `**ID:** ${order.id.split('/').pop()}\n`;
-              responseText += `**Date:** ${new Date(order.createdAt).toLocaleDateString()}\n`;
-              responseText += `**Status:** Payment - ${order.displayFinancialStatus || 'N/A'}, Fulfillment - ${order.displayFulfillmentStatus || 'N/A'}\n`;
-              responseText += `**Total:** ${totalPrice} ${currency}\n`;
-              
-              // Add customer information if available
-              if (order.customer) {
-                responseText += `\n### Customer\n`;
-                responseText += `**Name:** ${order.customer.firstName || ''} ${order.customer.lastName || ''}\n`;
-                responseText += `**Email:** ${order.customer.email || 'N/A'}\n`;
-              }
-              
-              // Add shipping address if available
-              if (order.shippingAddress) {
-                responseText += `\n### Shipping Address\n`;
-                responseText += `**Name:** ${order.shippingAddress.name || 'N/A'}\n`;
-                
-                const addressParts = [
-                  order.shippingAddress.address1,
-                  order.shippingAddress.address2,
-                  order.shippingAddress.city,
-                  order.shippingAddress.province,
-                  order.shippingAddress.country,
-                  order.shippingAddress.zip
-                ].filter(Boolean);
-                
-                responseText += `**Address:** ${addressParts.join(', ')}\n`;
-              }
-              
-              // Add line items
-              if (order.lineItems && order.lineItems.edges && order.lineItems.edges.length > 0) {
-                responseText += `\n### Items\n`;
-                
-                order.lineItems.edges.forEach((lineItemEdge: any) => {
-                  const item = lineItemEdge.node;
-                  const price = item.originalTotalSet?.shopMoney?.amount || 'N/A';
-                  const itemCurrency = item.originalTotalSet?.shopMoney?.currencyCode || '';
-                  
-                  responseText += `- ${item.quantity}x **${item.title}**`;
-                  
-                  if (item.variant && item.variant.sku) {
-                    responseText += ` (SKU: ${item.variant.sku})`;
-                  }
-                  
-                  responseText += `: ${price} ${itemCurrency}\n`;
-                });
-              }
-              
-              responseText += `\n---\n\n`;
-            } catch (formatError) {
-              console.error(`Error formatting order ${order.id}:`, formatError);
-              responseText += `## Order (Error displaying)\n\n`;
-              responseText += `---\n\n`;
+          // Handle different response formats
+          let orders;
+          try {
+            // Try different possible response structures
+            if (response.data && response.data.orders && response.data.orders.edges) {
+              orders = response.data.orders.edges.map((edge: any) => edge.node);
+            } else if (response.orders && response.orders.edges) {
+              orders = response.orders.edges.map((edge: any) => edge.node);
+            } else {
+              throw new Error('Unexpected response format');
             }
-          });
-          
-          return {
-            content: [{ type: 'text', text: responseText }]
-          };
-        } catch (apiError: any) {
-          console.error('API Error in browse_orders tool:', apiError);
+            
+            console.error(`Retrieved ${orders.length} orders`);
+            
+            if (orders.length === 0) {
+              return {
+                content: [{ 
+                  type: 'text', 
+                  text: `# No Orders Found\n\nNo orders were found matching your criteria.`
+                }]
+              };
+            }
+            
+            // Format orders information for display
+            let responseText = `# Shopify Orders\n\n`;
+            
+            if (queryFilters) {
+              responseText += `**Filters applied:** ${queryFilters}\n\n`;
+            }
+            
+            orders.forEach((order: any) => {
+              try {
+                const totalPrice = order.totalPriceSet?.shopMoney?.amount || 'N/A';
+                const currency = order.totalPriceSet?.shopMoney?.currencyCode || '';
+                
+                responseText += `## ${order.name}\n`;
+                responseText += `**ID:** ${order.id.split('/').pop()}\n`;
+                responseText += `**Date:** ${new Date(order.createdAt).toLocaleDateString()}\n`;
+                responseText += `**Status:** Payment - ${order.displayFinancialStatus || 'N/A'}, Fulfillment - ${order.displayFulfillmentStatus || 'N/A'}\n`;
+                responseText += `**Total:** ${totalPrice} ${currency}\n`;
+                
+                // Add customer information if available
+                if (order.customer) {
+                  responseText += `\n### Customer\n`;
+                  responseText += `**Name:** ${order.customer.firstName || ''} ${order.customer.lastName || ''}\n`;
+                  responseText += `**Email:** ${order.customer.email || 'N/A'}\n`;
+                }
+                
+                // Add shipping address if available
+                if (order.shippingAddress) {
+                  responseText += `\n### Shipping Address\n`;
+                  responseText += `**Name:** ${order.shippingAddress.name || 'N/A'}\n`;
+                  
+                  const addressParts = [
+                    order.shippingAddress.address1,
+                    order.shippingAddress.address2,
+                    order.shippingAddress.city,
+                    order.shippingAddress.province,
+                    order.shippingAddress.country,
+                    order.shippingAddress.zip
+                  ].filter(Boolean);
+                  
+                  responseText += `**Address:** ${addressParts.join(', ')}\n`;
+                }
+                
+                // Add line items
+                if (order.lineItems && order.lineItems.edges && order.lineItems.edges.length > 0) {
+                  responseText += `\n### Items\n`;
+                  
+                  order.lineItems.edges.forEach((lineItemEdge: any) => {
+                    const item = lineItemEdge.node;
+                    const price = item.originalTotalSet?.shopMoney?.amount || 'N/A';
+                    const itemCurrency = item.originalTotalSet?.shopMoney?.currencyCode || '';
+                    
+                    responseText += `- ${item.quantity}x **${item.title}**`;
+                    
+                    if (item.variant && item.variant.sku) {
+                      responseText += ` (SKU: ${item.variant.sku})`;
+                    }
+                    
+                    responseText += `: ${price} ${itemCurrency}\n`;
+                  });
+                }
+                
+                responseText += `\n---\n\n`;
+              } catch (formatError) {
+                console.error(`Error formatting order ${order.id}:`, formatError);
+                responseText += `## Order (Error displaying)\n\n`;
+                responseText += `---\n\n`;
+              }
+            });
+            
+            return {
+              content: [{ type: 'text', text: responseText }]
+            };
+          } catch (apiError: any) {
+            console.error('API Error in browse_orders tool:', apiError);
+            
+            return {
+              content: [{ 
+                type: 'text', 
+                text: `# API Error\n\nFailed to retrieve orders: ${apiError.message}\n\nPlease verify your API permissions and try again.`
+              }]
+            };
+          }
+        } catch (error: any) {
+          console.error('Error in browse_orders tool:', error);
           
           return {
             content: [{ 
               type: 'text', 
-              text: `# API Error\n\nFailed to retrieve orders: ${apiError.message}\n\nPlease verify your API permissions and try again.`
+              text: `# Error\n\nFailed to retrieve orders: ${error.message}\n\nPlease verify your API permissions and try again. This tool requires the 'read_orders' scope.`
             }]
           };
         }
@@ -459,41 +461,21 @@ async function getOrderDetails(server: any, id: string): Promise<any> {
     `;
     
     try {
-      // Execute the GraphQL query with the simpler format
-      const { data, errors } = await server.shopify.clients.Graphql().request(
+      // Execute the GraphQL query with simple parameters
+      const response = await server.shopify.clients.Graphql().request(
         query,
-        {
-          variables: { id: fullId }
-        }
+        { variables: { id: fullId } }
       );
       
-      console.error('Order API response received');
+      console.error('Order details API response received, type:', typeof response);
       
-      // For debugging
-      if (errors) {
-        console.error('GraphQL errors:', errors);
-        return {
-          content: [{ 
-            type: 'text', 
-            text: `# Error\n\nFailed to retrieve order details: ${errors[0]?.message || 'Unknown GraphQL error'}`
-          }]
-        };
-      }
-      
-      if (!data) {
-        console.error('Response data is undefined or null');
-        return {
-          content: [{ 
-            type: 'text', 
-            text: `# Error\n\nFailed to retrieve order details: API response data is undefined or null.`
-          }]
-        };
-      }
-      
-      // Extract the order from the response
-      const order = data.order;
-      
-      if (!order) {
+      // Handle different response formats
+      let order;
+      if (response.data && response.data.order) {
+        order = response.data.order;
+      } else if (response.order) {
+        order = response.order;
+      } else {
         console.error('Order not found in response data');
         return {
           content: [{ 

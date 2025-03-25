@@ -7,6 +7,12 @@ import { registerOrdersTools } from './shopify-orders.js';
 import { registerExplorerTools } from './shopify-explorer.js';
 import { registerQueryTool } from './shopify-query.js';
 import { introspectEndpoint } from './helpers/introspection.js';
+// Add fetch polyfill for Node.js
+import fetch from 'node-fetch';
+// Make fetch global
+if (!globalThis.fetch) {
+  globalThis.fetch = fetch as any;
+}
 
 // Load environment variables
 dotenv.config();
@@ -129,10 +135,8 @@ async function main() {
     console.error("Starting Simple Shopify Server...");
     
     const transport = new StdioServerTransport();
-    console.error("Created transport");
     
     await server.connect(transport);
-    console.error("Connected to transport");
     
     console.error("Server ready");
     

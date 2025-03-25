@@ -112,19 +112,40 @@ export function registerProductTools(server: any) {
           `;
         
         // Execute the GraphQL query with simple parameters
-        const { data, errors } = await client.request(query, {
-          variables: { first: limit }
+        const response = await client.request(query, {
+          variables: { first: parseInt(String(limit)) || 10 }
         });
         
-        // Extract the products from the response
-        const products = data.products.edges.map((edge: any) => edge.node);
-        console.error(`Retrieved ${products.length} products`);
+        console.error('Products API response received, type:', typeof response);
         
-        if (products.length === 0) {
+        // Handle different response formats
+        let products;
+        try {
+          // Try different possible response structures
+          if (response.data && response.data.products && response.data.products.edges) {
+            products = response.data.products.edges.map((edge: any) => edge.node);
+          } else if (response.products && response.products.edges) {
+            products = response.products.edges.map((edge: any) => edge.node);
+          } else {
+            throw new Error('Unexpected response format');
+          }
+          
+          console.error(`Retrieved ${products.length} products`);
+          
+          if (products.length === 0) {
+            return {
+              content: [{ 
+                type: 'text', 
+                text: `# No Products Found\n\nNo products were found in your Shopify store.`
+              }]
+            };
+          }
+        } catch (formatError) {
+          console.error('Error extracting products:', formatError);
           return {
             content: [{ 
               type: 'text', 
-              text: `# No Products Found\n\nNo products were found in your Shopify store.`
+              text: `# Error\n\nFailed to retrieve products: ${formatError instanceof Error ? formatError.message : String(formatError)}\n\nPlease try again with a smaller number of products (e.g., 3 instead of 5).`
             }]
           };
         }
@@ -227,7 +248,7 @@ async function getProductDetails(server: any, id: string): Promise<any> {
     const client = server.shopify.clients.Graphql();
     
     // Execute the GraphQL query for product details with inventory
-    const result = await client.request(
+    const response = await client.request(
       `
         query GetProduct($id: ID!) {
           product(id: $id) {
@@ -274,10 +295,15 @@ async function getProductDetails(server: any, id: string): Promise<any> {
       { variables: { id: fullId } }
     );
     
-    // Extract the product from the response
-    const product = result.product;
+    console.error('Product details API response received, type:', typeof response);
     
-    if (!product) {
+    // Handle different response formats
+    let product;
+    if (response.data && response.data.product) {
+      product = response.data.product;
+    } else if (response.product) {
+      product = response.product;
+    } else {
       console.error('Product not found in response data');
       return {
         content: [{ 
