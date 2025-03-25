@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { Session } from '@shopify/shopify-api';
 import { 
   buildClientSchema, 
   getIntrospectionQuery, 
@@ -15,11 +14,9 @@ export class ShopifySchema {
   private rawSchema: any = null;
   private schemaCache: string;
   private shopify: any;
-  private session: Session;
 
-  constructor(shopify: any, session: Session) {
+  constructor(shopify: any) {
     this.shopify = shopify;
-    this.session = session;
     this.schemaCache = path.join(process.cwd(), 'shopify-schema-cache.json');
   }
 
@@ -50,19 +47,25 @@ export class ShopifySchema {
       
       const adminApiUrl = `https://${storeDomain}/admin/api/${this.shopify.config.apiVersion}/graphql.json`;
       
-      // Execute the introspection query
-      const client = new this.shopify.clients.Graphql({
-        session: this.session
-      });
+      // Execute the introspection query using our config
+      const accessToken = process.env.SHOPIFY_API_ACCESS_TOKEN;
+      if (!accessToken) {
+        throw new Error('SHOPIFY_API_ACCESS_TOKEN environment variable is not set');
+      }
       
-      // Use the new request method instead of query
-      const introspectionData = await client.request(
-        getIntrospectionQuery()
-      );
+      // Use introspection helper to fetch the schema
+      const introspectionResult = await fetch(adminApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': accessToken
+        },
+        body: JSON.stringify({ query: getIntrospectionQuery() })
+      }).then(res => res.json());
       
       // Build a schema from the introspection data
-      this.schema = buildClientSchema(introspectionData.data);
-      this.rawSchema = introspectionData.data;
+      this.rawSchema = introspectionResult.data;
+      this.schema = buildClientSchema(this.rawSchema);
       
       // Save to cache
       fs.writeFileSync(this.schemaCache, JSON.stringify(this.rawSchema, null, 2));
@@ -162,10 +165,6 @@ export class ShopifySchema {
   ): Promise<{query: string, variableDefinitions: Record<string, any>}> {
     await this.loadSchema();
     
-    if (!this.schema) {
-      throw new Error('Schema not loaded');
-    }
-    
     // Validate all fields against the schema
     const validatedFields = await this.buildQuery(rootType, fieldsList);
     
@@ -185,32 +184,15 @@ export class ShopifySchema {
       })
       .join(', ');
     
-    // Check if the root field returns a connection
-    let isConnectionField = false;
-    try {
-      // Get the Query type
-      const queryType = this.schema.getQueryType();
-      if (queryType) {
-        // Get the field definition
-        const fieldDef = queryType.getFields()[rootField];
-        if (fieldDef) {
-          // Check if the field type name ends with Connection
-          const fieldTypeName = fieldDef.type.toString().replace(/[[\]!]/g, '');
-          isConnectionField = fieldTypeName.endsWith('Connection');
-          console.error(`Field ${rootField} returns type ${fieldTypeName}, isConnection: ${isConnectionField}`);
-        }
-      }
-    } catch (error) {
-      console.error(`Error checking if field ${rootField} is a connection:`, error);
-    }
+    // Check if this is likely a connection type (if it ends with 'Connection')
+    const isConnectionType = rootType.endsWith('Connection');
     
-    // For orders, products, etc. which are connection fields, wrap fields in edges/node
+    // Create the complete query string
     let queryFields = validatedFields;
     
-    if (isConnectionField && !validatedFields.includes('edges')) {
-      // Add the connection wrapper (edges -> node)
+    // For connection types, make sure fields are properly nested under edges.node
+    if (isConnectionType && !validatedFields.includes('edges')) {
       queryFields = `edges {\n  node {\n    ${validatedFields.split('\n').join('\n    ')}\n  }\n}`;
-      console.error(`Applied connection wrapper to fields for ${rootField}`);
     }
     
     const query = `
@@ -221,8 +203,6 @@ export class ShopifySchema {
       }
     `;
     
-    console.error(`Generated query for ${rootField}:`, query);
-    
     return {
       query,
       variableDefinitions: variables
@@ -232,7 +212,7 @@ export class ShopifySchema {
 
 // Example usage:
 // 
-// const schema = new ShopifySchema(shopify, session);
+// const schema = new ShopifySchema(shopify);
 // 
 // // Check if a field exists
 // const exists = await schema.fieldExists('Order', 'cancelledAt');

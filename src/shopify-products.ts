@@ -1,8 +1,7 @@
 import { z } from 'zod';
-import { Session } from '@shopify/shopify-api';
 
 // Define the tool handlers for Shopify products and inventory
-export function registerProductTools(server: any, session: Session) {
+export function registerProductTools(server: any) {
   // Create a combined tool for browsing products with inventory information
   server.tool(
     'browse_products',
@@ -16,7 +15,7 @@ export function registerProductTools(server: any, session: Session) {
         // If a product ID is provided, call the product detail logic
         if (product_id) {
           console.error(`View product tool called for ID: ${product_id}`);
-          return await getProductDetails(server, session, product_id);
+          return await getProductDetails(server, product_id);
         }
         
         console.error('Browse products tool called');
@@ -34,9 +33,7 @@ export function registerProductTools(server: any, session: Session) {
         }
         
         // Create a client for the Admin GraphQL API
-        const client = new server.shopify.clients.Graphql({
-          session
-        });
+        const client = server.shopify.clients.Graphql();
         
         // Define query based on whether to include inventory information
         const query = include_inventory 
@@ -114,32 +111,13 @@ export function registerProductTools(server: any, session: Session) {
             }
           `;
         
-        // Execute the GraphQL query
-        const response = await client.query({
-          data: {
-            query: query,
-            variables: { first: limit }
-          }
+        // Execute the GraphQL query with simple parameters
+        const { data, errors } = await client.request(query, {
+          variables: { first: limit }
         });
         
-        console.error('Products data received from API');
-        
-        // Extract the products data from the response
-        const data = response.body as any;
-        
-        // Validate response format
-        if (!data || !data.data || !data.data.products || !data.data.products.edges) {
-          console.error('Invalid products data format:', JSON.stringify(data));
-          return {
-            content: [{ 
-              type: 'text', 
-              text: `# Data Format Error\n\nThe response from Shopify API was not in the expected format.`
-            }]
-          };
-        }
-        
         // Extract the products from the response
-        const products = data.data.products.edges.map((edge: any) => edge.node);
+        const products = data.products.edges.map((edge: any) => edge.node);
         console.error(`Retrieved ${products.length} products`);
         
         if (products.length === 0) {
@@ -226,7 +204,7 @@ export function registerProductTools(server: any, session: Session) {
 }
 
 // Helper function to get detailed information about a specific product
-async function getProductDetails(server: any, session: Session, id: string): Promise<any> {
+async function getProductDetails(server: any, id: string): Promise<any> {
   try {
     if (!id || id.trim() === '') {
       console.error('Empty product ID provided');
@@ -245,47 +223,43 @@ async function getProductDetails(server: any, session: Session, id: string): Pro
       console.error(`Converted ID to: ${fullId}`);
     }
     
-    // Create a client for the Admin GraphQL API
-    const client = new server.shopify.clients.Graphql({
-      session
-    });
+    // Get the GraphQL client
+    const client = server.shopify.clients.Graphql();
     
     // Execute the GraphQL query for product details with inventory
-    const response = await client.query({
-      data: {
-        query: `
-          query GetProduct($id: ID!) {
-            product(id: $id) {
-              id
-              title
-              description
-              productType
-              vendor
-              createdAt
-              updatedAt
-              totalInventory
-              variants(first: 10) {
-                edges {
-                  node {
+    const result = await client.request(
+      `
+        query GetProduct($id: ID!) {
+          product(id: $id) {
+            id
+            title
+            description
+            productType
+            vendor
+            createdAt
+            updatedAt
+            totalInventory
+            variants(first: 10) {
+              edges {
+                node {
+                  id
+                  title
+                  price
+                  sku
+                  inventoryQuantity
+                  inventoryItem {
                     id
-                    title
-                    price
-                    sku
-                    inventoryQuantity
-                    inventoryItem {
-                      id
-                      tracked
-                      inventoryLevels(first: 5) {
-                        edges {
-                          node {
-                            id
-                            quantities(names: ["available"]) {
-                              name
-                              quantity
-                            }
-                            location {
-                              name
-                            }
+                    tracked
+                    inventoryLevels(first: 5) {
+                      edges {
+                        node {
+                          id
+                          quantities(names: ["available"]) {
+                            name
+                            quantity
+                          }
+                          location {
+                            name
                           }
                         }
                       }
@@ -295,19 +269,16 @@ async function getProductDetails(server: any, session: Session, id: string): Pro
               }
             }
           }
-        `,
-        variables: { id: fullId }
-      }
-    });
+        }
+      `,
+      { variables: { id: fullId } }
+    );
     
-    console.error('Product data received from API');
+    // Extract the product from the response
+    const product = result.product;
     
-    // Extract the product data from the response
-    const data = response.body as any;
-    
-    // Validate response format
-    if (!data || !data.data || !data.data.product) {
-      console.error('Invalid product data format or product not found:', JSON.stringify(data));
+    if (!product) {
+      console.error('Product not found in response data');
       return {
         content: [{ 
           type: 'text', 
@@ -315,9 +286,6 @@ async function getProductDetails(server: any, session: Session, id: string): Pro
         }]
       };
     }
-    
-    // Extract the product from the response
-    const product = data.data.product;
     
     // Format product information for display with detailed inventory
     let responseText = `# ${product.title}\n\n`;

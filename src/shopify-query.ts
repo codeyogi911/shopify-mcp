@@ -1,11 +1,10 @@
 import { z } from 'zod';
-import { Session } from '@shopify/shopify-api';
 import { parse } from 'graphql';
 
 /**
  * Register a tool for querying the Shopify GraphQL API
  */
-export function registerQueryTool(server: any, session: Session) {
+export function registerQueryTool(server: any) {
   server.tool(
     'query_shopify',
     {
@@ -40,9 +39,7 @@ export function registerQueryTool(server: any, session: Session) {
         console.error(`Executing GraphQL ${isMutation ? 'mutation' : 'query'}`);
         
         // Create a client for the Admin GraphQL API
-        const client = new server.shopify.clients.Graphql({
-          session
-        });
+        const client = server.shopify.clients.Graphql();
         
         // Execute the GraphQL query using the client
         const response = await client.request(

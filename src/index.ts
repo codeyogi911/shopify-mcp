@@ -1,22 +1,20 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import '@shopify/shopify-api/adapters/node';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
 import dotenv from 'dotenv';
-import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
+import { createAdminApiClient } from '@shopify/admin-api-client';
 import { registerProductTools } from './shopify-products.js';
 import { registerOrdersTools } from './shopify-orders.js';
-import { ShopifySchema } from './shopify-schema.js';
 import { registerExplorerTools } from './shopify-explorer.js';
 import { registerQueryTool } from './shopify-query.js';
 import { introspectEndpoint } from './helpers/introspection.js';
-import { printSchema } from 'graphql';
 
+// Load environment variables
 dotenv.config();
 
 // Validate environment variables
 const shopifyStoreName = process.env.SHOPIFY_STORE_NAME;
 const shopifyAccessToken = process.env.SHOPIFY_API_ACCESS_TOKEN;
+const apiVersion = '2025-01'; // Use a specific API version
 
 if (!shopifyStoreName || !shopifyAccessToken) {
   console.error('Missing required environment variables:');
@@ -24,24 +22,12 @@ if (!shopifyStoreName || !shopifyAccessToken) {
   console.error(`- SHOPIFY_API_ACCESS_TOKEN: ${shopifyAccessToken ? 'Set' : 'Not set'}`);
 }
 
-// Initialize Shopify API client
-const shopify = shopifyApi({
-  apiKey: 'not-used-with-admin-api-access-token',
-  apiSecretKey: 'not-used-with-admin-api-access-token',
-  scopes: ['read_products', 'read_orders', 'read_customers'],
-  hostName: `${shopifyStoreName}.myshopify.com`,
-  apiVersion: LATEST_API_VERSION,
-  isEmbeddedApp: false,
-  logger: {
-    log: async (severity, message) => {
-      console.error(`[Shopify API] [${severity}] ${message}`);
-    }
-  }
+// Initialize the admin API client
+const adminClient = createAdminApiClient({
+  storeDomain: `${shopifyStoreName}.myshopify.com`,
+  apiVersion,
+  accessToken: shopifyAccessToken || '',
 });
-
-// Create a custom offline session
-const session = shopify.session.customAppSession(`${shopifyStoreName}.myshopify.com`);
-session.accessToken = shopifyAccessToken;
 
 // Create a simple MCP server for Shopify
 const server = new McpServer({
@@ -50,12 +36,29 @@ const server = new McpServer({
   description: 'A simplified MCP server for Shopify'
 });
 
-// Attach the Shopify client to the server object so it's accessible in the product tools
-(server as any).shopify = shopify;
-
-// Initialize the schema utility and attach it to the server
-const shopifySchema = new ShopifySchema(shopify, session);
-(server as any).shopifySchema = shopifySchema;
+// Attach the admin client to the server object so it's accessible in the tools
+(server as any).shopify = {
+  clients: {
+    Graphql: () => ({
+      request: async (query: string, options: any) => {
+        try {
+          // Simple pass-through to the Shopify API
+          console.error('GraphQL request variables:', options?.variables || {});
+          const resp = await adminClient.request(query, {variables: options?.variables || {}});
+          console.error('GraphQL response:', JSON.stringify(resp, null, 2));
+          return resp;
+        } catch (error) {
+          console.error('GraphQL request error:', error);
+          throw error; // Let the caller handle errors
+        }
+      }
+    })
+  },
+  config: {
+    apiVersion,
+    hostName: `${shopifyStoreName}.myshopify.com`
+  }
+};
 
 // Define just one simple resource - the home page
 server.resource('root', 'shopify://', async (uri) => {
@@ -70,16 +73,16 @@ server.resource('root', 'shopify://', async (uri) => {
 });
 
 // Register all product and inventory related tools from the separate file
-registerProductTools(server, session);
+registerProductTools(server);
 
 // Register orders related tools from the separate file
-registerOrdersTools(server, session);
+registerOrdersTools(server);
 
 // Register explorer tools from the separate file
-registerExplorerTools(server, session);
+registerExplorerTools(server);
 
 // Register the GraphQL query tool
-registerQueryTool(server, session);
+registerQueryTool(server);
 
 // Add a simple resource for browsing the GraphQL schema
 server.resource('graphql-schema', 'shopify://graphql-schema', async (uri) => {
@@ -87,7 +90,7 @@ server.resource('graphql-schema', 'shopify://graphql-schema', async (uri) => {
   
   try {
     const storeDomain = `${shopifyStoreName}.myshopify.com`;
-    const adminApiUrl = `https://${storeDomain}/admin/api/${LATEST_API_VERSION}/graphql.json`;
+    const adminApiUrl = `https://${storeDomain}/admin/api/${apiVersion}/graphql.json`;
     
     // Get the schema by introspection
     const schema = await introspectEndpoint(adminApiUrl, {

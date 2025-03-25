@@ -14,8 +14,7 @@
     "start": "node build/index.js",
     "dev": "tsc --watch & node --watch build/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "inspect": "npx @modelcontextprotocol/inspector node build/index.js",
-    "graphql-codegen": "graphql-codegen"
+    "inspect": "npx @modelcontextprotocol/inspector node build/index.js"
   },
   "keywords": [
     "shopify",
@@ -30,8 +29,6 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",
     "@shopify/admin-api-client": "^1.0.7",
-    "@shopify/shopify-api": "^11.11.1",
-    "@shopify/storefront-api-client": "^1.0.6",
     "axios": "^1.6.7",
     "chalk": "^5.3.0",
     "dotenv": "^16.4.1",
@@ -41,7 +38,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@shopify/api-codegen-preset": "^1.1.6",
     "@types/express": "^4.17.21",
     "@types/node": "^22.13.13",
     "typescript": "^5.8.2"

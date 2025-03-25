@@ -1,6 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { Session } from '@shopify/shopify-api';
 import { ShopifySchema } from './shopify-schema.js';
 import { introspectEndpoint } from './helpers/introspection.js';
 
@@ -32,7 +30,7 @@ interface ExtendedServer {
 }
 
 // Register explorer tools for the Shopify GraphQL schema
-export function registerExplorerTools(server: any, session: Session) {
+export function registerExplorerTools(server: any) {
   // Add an introspect-schema tool that returns the full schema
   server.tool(
     'introspect_schema',
