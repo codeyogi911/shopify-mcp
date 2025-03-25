@@ -6,6 +6,11 @@ import dotenv from 'dotenv';
 import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
 import { registerProductTools } from './shopify-products.js';
 import { registerOrdersTools } from './shopify-orders.js';
+import { ShopifySchema } from './shopify-schema.js';
+import { registerExplorerTools } from './shopify-explorer.js';
+import { registerQueryTool } from './shopify-query.js';
+import { introspectEndpoint } from './helpers/introspection.js';
+import { printSchema } from 'graphql';
 
 dotenv.config();
 
@@ -48,6 +53,10 @@ const server = new McpServer({
 // Attach the Shopify client to the server object so it's accessible in the product tools
 (server as any).shopify = shopify;
 
+// Initialize the schema utility and attach it to the server
+const shopifySchema = new ShopifySchema(shopify, session);
+(server as any).shopifySchema = shopifySchema;
+
 // Define just one simple resource - the home page
 server.resource('root', 'shopify://', async (uri) => {
   console.error('Root resource handler called');
@@ -65,6 +74,51 @@ registerProductTools(server, session);
 
 // Register orders related tools from the separate file
 registerOrdersTools(server, session);
+
+// Register explorer tools from the separate file
+registerExplorerTools(server, session);
+
+// Register the GraphQL query tool
+registerQueryTool(server, session);
+
+// Add a simple resource for browsing the GraphQL schema
+server.resource('graphql-schema', 'shopify://graphql-schema', async (uri) => {
+  console.error('GraphQL schema resource handler called');
+  
+  try {
+    const storeDomain = `${shopifyStoreName}.myshopify.com`;
+    const adminApiUrl = `https://${storeDomain}/admin/api/${LATEST_API_VERSION}/graphql.json`;
+    
+    // Get the schema by introspection
+    const schema = await introspectEndpoint(adminApiUrl, {
+      'X-Shopify-Access-Token': shopifyAccessToken || ''
+    });
+    
+    return {
+      contents: [{
+        uri: uri.href,
+        text: `# Shopify GraphQL Schema
+
+\`\`\`graphql
+${schema}
+\`\`\`
+`
+      }]
+    };
+  } catch (error) {
+    console.error('Error generating GraphQL schema resource:', error);
+    return {
+      contents: [{
+        uri: uri.href,
+        text: `# Error Loading GraphQL Schema
+
+There was an error loading the GraphQL schema: ${(error as Error).message}
+
+Please try again later or contact the administrator.`
+      }]
+    };
+  }
+});
 
 // Simple entry point
 async function main() {

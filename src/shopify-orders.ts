@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Session } from '@shopify/shopify-api';
+import { introspectEndpoint } from './helpers/introspection.js';
 
 // Define the tool handler for Shopify orders
 export function registerOrdersTools(server: any, session: Session) {
@@ -81,95 +82,100 @@ export function registerOrdersTools(server: any, session: Session) {
           variables.query = queryFilters.trim();
         }
         
-        // Execute the GraphQL query for orders
-        const response = await client.query({
-          data: {
-            query: `
-              query GetOrders($first: Int!, $query: String) {
-                orders(first: $first, query: $query) {
-                  edges {
-                    node {
-                      id
-                      name
-                      createdAt
-                      displayFinancialStatus
-                      displayFulfillmentStatus
-                      canceledAt
-                      closedAt
-                      processedAt
-                      totalPriceSet {
-                        shopMoney {
-                          amount
-                          currencyCode
-                        }
-                      }
-                      subtotalPriceSet {
-                        shopMoney {
-                          amount
-                          currencyCode
-                        }
-                      }
-                      totalShippingPriceSet {
-                        shopMoney {
-                          amount
-                          currencyCode
-                        }
-                      }
-                      totalTaxSet {
-                        shopMoney {
-                          amount
-                          currencyCode
-                        }
-                      }
-                      customer {
-                        id
-                        email
-                        firstName
-                        lastName
-                        ordersCount
-                        totalSpent
-                      }
-                      lineItems(first: 5) {
-                        edges {
-                          node {
-                            title
-                            quantity
-                            originalTotalSet {
-                              shopMoney {
-                                amount
-                                currencyCode
-                              }
-                            }
-                            variant {
-                              id
-                              title
-                              sku
-                            }
+        // Use a hardcoded query instead of the schema utility
+        const query = `
+          query GetOrders($first: Int!, $query: String) {
+            orders(first: $first, query: $query) {
+              edges {
+                node {
+                  id
+                  name
+                  createdAt
+                  displayFinancialStatus
+                  displayFulfillmentStatus
+                  cancelledAt
+                  closedAt
+                  processedAt
+                  totalPriceSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  subtotalPriceSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  totalShippingPriceSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  totalTaxSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  customer {
+                    id
+                    email
+                    firstName
+                    lastName
+                    amountSpent {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  lineItems(first: 5) {
+                    edges {
+                      node {
+                        title
+                        quantity
+                        originalTotalSet {
+                          shopMoney {
+                            amount
+                            currencyCode
                           }
                         }
-                      }
-                      shippingAddress {
-                        name
-                        address1
-                        address2
-                        city
-                        province
-                        country
-                        zip
+                        variant {
+                          id
+                          title
+                          sku
+                        }
                       }
                     }
                   }
+                  shippingAddress {
+                    name
+                    address1
+                    address2
+                    city
+                    province
+                    country
+                    zip
+                  }
                 }
               }
-            `,
-            variables: variables
+            }
           }
-        });
+        `;
+        
+        // Execute the GraphQL query for orders using the new request method
+        const response = await client.request(
+          query,
+          {
+            variables
+          }
+        );
         
         console.error('Orders data received from API');
         
-        // Extract the orders data from the response
-        const data = response.body as any;
+        // Extract the orders data from the response - data is directly accessible now
+        const data = response;
         
         // Validate response format
         if (!data || !data.data || !data.data.orders || !data.data.orders.edges) {
@@ -218,7 +224,6 @@ export function registerOrdersTools(server: any, session: Session) {
               responseText += `\n### Customer\n`;
               responseText += `**Name:** ${order.customer.firstName || ''} ${order.customer.lastName || ''}\n`;
               responseText += `**Email:** ${order.customer.email || 'N/A'}\n`;
-              responseText += `**Orders Count:** ${order.customer.ordersCount || '0'}\n`;
             }
             
             // Add shipping address if available
@@ -307,153 +312,158 @@ async function getOrderDetails(server: any, session: Session, id: string): Promi
       session
     });
     
-    // Execute the GraphQL query for order details
-    const response = await client.query({
-      data: {
-        query: `
-          query GetOrder($id: ID!) {
-            order(id: $id) {
-              id
-              name
-              note
-              createdAt
-              processedAt
-              closedAt
-              canceledAt
-              displayFinancialStatus
-              displayFulfillmentStatus
-              fullyPaid
-              refundable
-              confirmed
-              totalPriceSet {
-                shopMoney {
-                  amount
-                  currencyCode
-                }
-              }
-              subtotalPriceSet {
-                shopMoney {
-                  amount
-                  currencyCode
-                }
-              }
-              totalShippingPriceSet {
-                shopMoney {
-                  amount
-                  currencyCode
-                }
-              }
-              totalTaxSet {
-                shopMoney {
-                  amount
-                  currencyCode
-                }
-              }
-              totalRefundedSet {
-                shopMoney {
-                  amount
-                  currencyCode
-                }
-              }
-              customer {
-                id
-                email
-                firstName
-                lastName
-                phone
-                ordersCount
-                totalSpent
-                defaultAddress {
-                  address1
-                  address2
-                  city
-                  province
-                  country
-                  zip
-                  phone
-                }
-              }
-              shippingAddress {
-                name
-                address1
-                address2
-                city
-                province
-                country
-                zip
-                phone
-              }
-              billingAddress {
-                name
-                address1
-                address2
-                city
-                province
-                country
-                zip
-                phone
-              }
-              lineItems(first: 20) {
-                edges {
-                  node {
-                    title
-                    quantity
-                    originalTotalSet {
-                      shopMoney {
-                        amount
-                        currencyCode
-                      }
-                    }
-                    variant {
-                      id
-                      title
-                      sku
-                      inventoryQuantity
-                      price
-                    }
+    // Use a hardcoded query for order details
+    const query = `
+      query GetOrderDetails($id: ID!) {
+        order(id: $id) {
+          id
+          name
+          note
+          createdAt
+          processedAt
+          closedAt
+          cancelledAt
+          displayFinancialStatus
+          displayFulfillmentStatus
+          fullyPaid
+          refundable
+          confirmed
+          totalPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          subtotalPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          totalShippingPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          totalTaxSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          totalRefundedSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          customer {
+            id
+            email
+            firstName
+            lastName
+            phone
+            amountSpent {
+              amount
+              currencyCode
+            }
+            defaultAddress {
+              address1
+              address2
+              city
+              province
+              country
+              zip
+              phone
+            }
+          }
+          shippingAddress {
+            name
+            address1
+            address2
+            city
+            province
+            country
+            zip
+            phone
+          }
+          billingAddress {
+            name
+            address1
+            address2
+            city
+            province
+            country
+            zip
+            phone
+          }
+          lineItems(first: 20) {
+            edges {
+              node {
+                title
+                quantity
+                originalTotalSet {
+                  shopMoney {
+                    amount
+                    currencyCode
                   }
                 }
-              }
-              fulfillments {
-                status
-                createdAt
-                trackingInfo {
-                  company
-                  number
-                  url
-                }
-              }
-              transactions(first: 10) {
-                edges {
-                  node {
-                    id
-                    kind
-                    status
-                    processedAt
-                    amountSet {
-                      shopMoney {
-                        amount
-                        currencyCode
-                      }
-                    }
-                    paymentDetails {
-                      creditCardNumber
-                      creditCardCompany
-                    }
-                  }
+                variant {
+                  id
+                  title
+                  sku
+                  inventoryQuantity
+                  price
                 }
               }
             }
           }
-        `,
+          fulfillments {
+            status
+            createdAt
+            trackingInfo {
+              company
+              number
+              url
+            }
+          }
+          transactions(first: 10) {
+            edges {
+              node {
+                id
+                kind
+                status
+                processedAt
+                amountSet {
+                  shopMoney {
+                    amount
+                    currencyCode
+                  }
+                }
+                paymentDetails {
+                  creditCardNumber
+                  creditCardCompany
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+    
+    // Execute the GraphQL query for order details using the new request method
+    const response = await client.request(
+      query,
+      {
         variables: { id: fullId }
       }
-    });
+    );
     
     console.error('Order data received from API');
     
-    // Extract the order data from the response
-    const data = response.body as any;
+    // Extract the order data from the response - data is directly accessible now
+    const data = response;
     
     // Validate response format
     if (!data || !data.data || !data.data.order) {
@@ -480,8 +490,8 @@ async function getOrderDetails(server: any, session: Session, id: string): Promi
       responseText += `**Processed:** ${new Date(order.processedAt).toLocaleString()}\n`;
     }
     
-    if (order.canceledAt) {
-      responseText += `**Canceled:** ${new Date(order.canceledAt).toLocaleString()}\n`;
+    if (order.cancelledAt) {
+      responseText += `**Canceled:** ${new Date(order.cancelledAt).toLocaleString()}\n`;
     } else if (order.closedAt) {
       responseText += `**Closed:** ${new Date(order.closedAt).toLocaleString()}\n`;
     }
@@ -521,8 +531,7 @@ async function getOrderDetails(server: any, session: Session, id: string): Promi
         responseText += `**Phone:** ${order.customer.phone}\n`;
       }
       
-      responseText += `**Orders Count:** ${order.customer.ordersCount || '0'}\n`;
-      responseText += `**Total Spent:** ${order.customer.totalSpent || '0'}\n`;
+      responseText += `**Total Spent:** ${order.customer.amountSpent?.amount || '0'} ${order.customer.amountSpent?.currencyCode || ''}\n`;
     }
     
     // Shipping address
