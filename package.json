@@ -14,7 +14,7 @@
     "start": "node build/index.js",
     "dev": "tsc --watch & node --watch build/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "inspect": "npx @modelcontextprotocol/inspector node build/index.js"
+    "inspect": "npm run build && npx @modelcontextprotocol/inspector node build/index.js"
   },
   "keywords": [
     "shopify",

@@ -1,10 +1,100 @@
 import { z } from 'zod';
+import { ShopifyServer } from '../types.js';
 
 // Define the tool handlers for Shopify products and inventory
-export function registerProductTools(server: any) {
+export function registerProductTools(server: ShopifyServer) {
+
+  // Tool for creating a product
+  server.tool(
+    'create_product',
+    {
+      name: z.string().describe('The name of the product'),
+      description: z.string().optional().describe('Product description'),
+      price: z.string().describe('Base price of the product'),
+      vendor: z.string().optional().describe('Product vendor name'),
+    },
+    async ({ name, description = '', price, vendor = '' }) => {
+      try {
+        const client = server.shopify.clients.Graphql();
+        const mutation = `
+          mutation createProduct($input: ProductInput!) {
+            productCreate(input: $input) {
+              product {
+                id
+                title
+                description
+                status
+                vendor
+                variants(first: 1) {
+                  edges {
+                    node {
+                      id
+                      price
+                    }
+                  }
+                }
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }
+        `;
+
+        const response = await client.request(mutation, {
+          variables: {
+            input: {
+              title: name,
+              descriptionHtml: description,
+              vendor: vendor,
+              status: "DRAFT",
+              variants: [{ price: price }]
+            }
+          }
+        });
+
+        if (response.data?.productCreate?.userErrors?.length > 0) {
+          const errors = response.data.productCreate.userErrors
+            .map((error: any) => `${error.field}: ${error.message}`)
+            .join('\n');
+          return {
+            content: [{ type: 'text', text: `# Error Creating Product\n\n${errors}` }]
+          };
+        }
+
+        const product = response.data?.productCreate?.product;
+        if (!product) {
+          throw new Error('Product creation failed - no product data returned');
+        }
+
+        const variant = product.variants.edges[0]?.node;
+        let responseText = `# Product Created Successfully\n\n`;
+        responseText += `**ID:** ${product.id.split('/').pop()}\n`;
+        responseText += `**Title:** ${product.title}\n`;
+        responseText += `**Status:** Draft\n`;
+        responseText += `**Vendor:** ${product.vendor || 'N/A'}\n`;
+        if (variant) {
+          responseText += `**Price:** $${variant.price}\n`;
+        }
+        responseText += `\n## Description\n\n${product.description || 'No description provided.'}\n`;
+
+        return {
+          content: [{ type: 'text', text: responseText }]
+        };
+      } catch (error: any) {
+        console.error('Error creating product:', error);
+        return {
+          content: [{ type: 'text', text: `# Error\n\nFailed to create product: ${error.message}` }]
+        };
+      }
+    }
+  );
+
   // Create a combined tool for browsing products with inventory information
   server.tool(
     'browse_products',
+    'Browse products with inventory information',
     {
       limit: z.number().optional().describe('Number of products to retrieve (default: 10)'),
       include_inventory: z.boolean().optional().describe('Whether to include detailed inventory information (default: false)'),
@@ -225,7 +315,7 @@ export function registerProductTools(server: any) {
 }
 
 // Helper function to get detailed information about a specific product
-async function getProductDetails(server: any, id: string): Promise<any> {
+async function getProductDetails(server: ShopifyServer, id: string): Promise<any> {
   try {
     if (!id || id.trim() === '') {
       console.error('Empty product ID provided');

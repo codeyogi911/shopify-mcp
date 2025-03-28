@@ -2,12 +2,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import dotenv from 'dotenv';
 import { createAdminApiClient } from '@shopify/admin-api-client';
-import { registerProductTools } from './shopify-products.js';
-import { registerOrdersTools } from './shopify-orders.js';
-import { registerExplorerTools } from './shopify-explorer.js';
-import { registerQueryTool } from './shopify-query.js';
+import { registerProductTools } from './tools/shopify-products.js';
+import { registerOrdersTools } from './tools/shopify-orders.js';
+import { registerExplorerTools } from './tools/shopify-explorer.js';
+import { registerQueryTool } from './tools/shopify-query.js';
 import { registerResources } from './resources.js';
-import { ShopifySchema } from './shopify-schema.js';
+import { ShopifySchema } from './tools/shopify-schema.js';
+import { ShopifyServer } from './types.js';
 // Add fetch polyfill for Node.js
 import fetch from 'node-fetch';
 // Make fetch global
@@ -41,7 +42,7 @@ const server = new McpServer({
   name: 'Simple Shopify Server',
   version: '1.0.0',
   description: 'A simplified MCP server for Shopify'
-});
+}) as ShopifyServer;
 
 // Attach the admin client to the server object so it's accessible in the tools
 (server as any).shopify = {
@@ -68,7 +69,7 @@ const server = new McpServer({
 };
 
 // Initialize the schema and attach it to the server
-(server as any).shopifySchema = new ShopifySchema((server as any).shopify);
+server.shopifySchema = new ShopifySchema((server as any).shopify);
 
 // Register all resources
 registerResources(server, shopifyStoreName || '', shopifyAccessToken || '', apiVersion);

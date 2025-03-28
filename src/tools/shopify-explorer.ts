@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ShopifySchema } from './shopify-schema.js';
-import { introspectEndpoint } from './helpers/introspection.js';
+import { ShopifyServer } from '../types.js';
+import { buildClientSchema, printSchema } from 'graphql';
 
 // Type definitions to match the schema structure
 interface SchemaType {
@@ -30,7 +31,7 @@ interface ExtendedServer {
 }
 
 // Register explorer tools for the Shopify GraphQL schema
-export function registerExplorerTools(server: any) {
+export function registerExplorerTools(server: ShopifyServer) {
   // Add an introspect-schema tool that returns the full schema
   server.tool(
     'introspect_schema',
@@ -40,22 +41,11 @@ export function registerExplorerTools(server: any) {
     },
     async ({ format = 'sdl' }: { format?: 'sdl' | 'json' }) => {
       try {
-        // Get the API access details from server
-        const shopifyStoreName = process.env.SHOPIFY_STORE_NAME;
-        const shopifyAccessToken = process.env.SHOPIFY_API_ACCESS_TOKEN || '';
-        
-        if (!shopifyStoreName) {
-          throw new Error('SHOPIFY_STORE_NAME environment variable is not set');
-        }
-        
         const serverWithShopify = server as ExtendedServer;
-        const storeDomain = `${shopifyStoreName}.myshopify.com`;
-        const adminApiUrl = `https://${storeDomain}/admin/api/${serverWithShopify.shopify.config.apiVersion}/graphql.json`;
+        const shopifySchema = serverWithShopify.shopifySchema;
         
-        // Fetch the schema
-        const schema = await introspectEndpoint(adminApiUrl, {
-          'X-Shopify-Access-Token': shopifyAccessToken
-        });
+        // Load the schema
+        const schema = await shopifySchema.loadSchema();
         
         // Return in requested format
         if (format === 'json') {
@@ -69,7 +59,7 @@ export function registerExplorerTools(server: any) {
           return {
             content: [{ 
               type: 'text', 
-              text: `# Shopify GraphQL Schema (SDL)\n\n\`\`\`graphql\n${schema}\n\`\`\`` 
+              text: `# Shopify GraphQL Schema (SDL)\n\n\`\`\`graphql\n${printSchema(buildClientSchema(schema))}\n\`\`\`` 
             }]
           };
         }

@@ -7,17 +7,18 @@ import {
   GraphQLObjectType,
   printSchema
 } from 'graphql';
+import { SchemaCache } from './schema-cache.js';
 
 // Class to handle the Shopify GraphQL schema
 export class ShopifySchema {
   private schema: GraphQLSchema | null = null;
   private rawSchema: any = null;
-  private schemaCache: string;
   private shopify: any;
+  private schemaCache: SchemaCache;
 
   constructor(shopify: any) {
     this.shopify = shopify;
-    this.schemaCache = path.join(process.cwd(), 'shopify-schema-cache.json');
+    this.schemaCache = SchemaCache.getInstance();
   }
 
   // Load the schema from cache or fetch it from Shopify
@@ -28,13 +29,14 @@ export class ShopifySchema {
 
     try {
       // Try to load from cache first if not forcing a fetch
-      if (!forceFetch && fs.existsSync(this.schemaCache)) {
-        console.error('Loading Shopify schema from cache');
-        const cacheData = fs.readFileSync(this.schemaCache, 'utf8');
-        const schemaData = JSON.parse(cacheData);
-        this.schema = buildClientSchema(schemaData);
-        this.rawSchema = schemaData;
-        return this.rawSchema;
+      if (!forceFetch) {
+        const cachedSchema = await this.schemaCache.getSchema();
+        if (cachedSchema) {
+          console.error('Loading Shopify schema from cache');
+          this.schema = buildClientSchema(cachedSchema);
+          this.rawSchema = cachedSchema;
+          return this.rawSchema;
+        }
       }
 
       // If no cache or forcing fetch, get from Shopify API
@@ -48,27 +50,34 @@ export class ShopifySchema {
       const adminApiUrl = `https://${storeDomain}/admin/api/${this.shopify.config.apiVersion}/graphql.json`;
       
       // Execute the introspection query using our config
-      const accessToken = process.env.SHOPIFY_API_ACCESS_TOKEN;
-      if (!accessToken) {
-        throw new Error('SHOPIFY_API_ACCESS_TOKEN environment variable is not set');
-      }
-      
-      // Use introspection helper to fetch the schema
-      const introspectionResult = await fetch(adminApiUrl, {
+      const response = await fetch(adminApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': accessToken
+          'X-Shopify-Access-Token': this.shopify.config.accessToken
         },
-        body: JSON.stringify({ query: getIntrospectionQuery() })
-      }).then(res => res.json());
+        body: JSON.stringify({
+          query: getIntrospectionQuery()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch schema: ${response.statusText}`);
+      }
+
+      const result = await response.json();
       
-      // Build a schema from the introspection data
-      this.rawSchema = introspectionResult.data;
-      this.schema = buildClientSchema(this.rawSchema);
+      if (result.errors) {
+        throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+      }
+
+      const schemaData = result.data;
       
-      // Save to cache
-      fs.writeFileSync(this.schemaCache, JSON.stringify(this.rawSchema, null, 2));
+      // Cache the schema
+      await this.schemaCache.setSchema(schemaData);
+      
+      this.schema = buildClientSchema(schemaData);
+      this.rawSchema = schemaData;
       
       return this.rawSchema;
     } catch (error) {

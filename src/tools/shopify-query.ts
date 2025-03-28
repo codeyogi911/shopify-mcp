@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { parse } from 'graphql';
+import { ShopifyServer } from '../types.js';
 
 /**
  * Register a tool for querying the Shopify GraphQL API
  */
-export function registerQueryTool(server: any) {
+export function registerQueryTool(server: ShopifyServer) {
   server.tool(
     'query_shopify',
     {
