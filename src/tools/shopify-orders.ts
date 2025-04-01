@@ -6,6 +6,7 @@ export function registerOrdersTools(server: ShopifyServer) {
   // Create a tool for browsing orders
   server.tool(
     'browse_orders',
+    'Browse Shopify orders',
     {
       limit: z.number().optional().describe('Number of orders to retrieve (default: 10)'),
       status: z.enum(['any', 'open', 'closed', 'cancelled']).optional().describe('Filter orders by status (default: any)'),

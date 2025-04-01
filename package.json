@@ -27,7 +27,7 @@
   "license": "ISC",
   "description": "A Model Context Protocol server for Shopify GraphQL API",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.7.0",
+    "@modelcontextprotocol/sdk": "^1.8.0",
     "@shopify/admin-api-client": "^1.0.7",
     "axios": "^1.6.7",
     "chalk": "^5.3.0",
