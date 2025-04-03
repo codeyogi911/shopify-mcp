@@ -29,9 +29,33 @@ This is a simple Model Context Protocol (MCP) server that connects your Shopify 
 
 ## Features
 
-- Browse products with `shopify://products`
-- View product details with `shopify://product/{id}`  
-- Search for products using the `search_shopify` tool
+This server provides access to the following Shopify functionality through MCP tools:
+
+### Product Tools
+- `create_product`: Create a product structure with options in DRAFT status
+- `browse_products`: Browse products with inventory information
+- `update_variant_price`: Update price and/or compare-at price of a product variant
+
+### Inventory Tools
+- `list_inventory_items`: List inventory items with optional filtering by SKU
+- `get_inventory_item`: Get detailed information about a specific inventory item by ID or SKU
+- `update_inventory_quantity`: Update the available quantity of an inventory item at a location
+
+### Order Tools
+- `browse_orders`: Browse Shopify orders with filtering options (status, date range, customer, etc.)
+
+### Customer Tools
+- `browse_customers`: Browse customers and their spend with filtering and sorting options
+
+### Media Tools
+- `upload_image_from_url`: Upload an image from a public URL to Shopify CDN Files
+
+### Abandonment Tools
+- `get_abandonment`: Retrieve details of cart/checkout abandonment by ID
+
+### GraphQL Tools
+- `query_shopify`: Execute custom GraphQL queries or mutations against the Shopify Admin API
+- `introspect_admin_schema`: Introspect and explore the Shopify Admin API GraphQL schema
 
 ## License
 

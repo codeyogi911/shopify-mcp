@@ -57,3 +57,7 @@ coverage/
 .temp
 temp/
 .cache/ 
+
+# Data
+shopify-schema-cache.json
+data/*.json

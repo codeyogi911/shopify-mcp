@@ -8,9 +8,9 @@ import { registerInventoryTools } from './tools/shopify-inventory.js';
 import { registerOrdersTools } from './tools/shopify-orders.js';
 import { registerExplorerTools } from './tools/shopify-explorer.js';
 import { registerQueryTool } from './tools/shopify-query.js';
-import { ShopifySchema } from './tools/shopify-schema.js';
-import { registerCustomerTools } from './shopify-customers.js';
+import { registerCustomerTools } from './tools/shopify-customers.js';
 import { registerMediaTools } from './tools/shopify-media.js';
+import { registerAbandonmentTools } from './tools/shopify-abandonment.js';
 import { registerStoreInfoResource } from './resources/store-info.js';
 // Add fetch polyfill for Node.js
 import fetch from 'node-fetch';
@@ -43,7 +43,6 @@ const adminClient = createAdminApiClient({
 // Define the ShopifyServer type
 interface ShopifyServer extends McpServer {
   shopify: any;
-  shopifySchema: any;
 }
 
 // Create a simple MCP server for Shopify
@@ -79,9 +78,6 @@ server.shopify = {
   }
 };
 
-// Initialize the schema and attach it to the server
-(server as any).shopifySchema = ShopifySchema.getInstance((server as any).shopify);
-
 // Register all resources
 registerStoreInfoResource(server);
 
@@ -105,6 +101,9 @@ registerCustomerTools(server);
 
 // Register media tools from the separate file
 registerMediaTools(server);
+
+// Register abandonment tools
+registerAbandonmentTools(server);
 
 // Simple entry point
 async function main() {

@@ -1,5 +1,4 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { ShopifySchema } from './tools/shopify-schema.js';
 
 export interface ShopifyServer extends McpServer {
   shopify: {
@@ -13,5 +12,4 @@ export interface ShopifyServer extends McpServer {
       hostName: string;
     };
   };
-  shopifySchema: ShopifySchema;
 } 
