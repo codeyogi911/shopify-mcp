@@ -92,7 +92,7 @@ export function registerAbandonmentTools(server: ShopifyServer) {
   // Tool for getting abandonment details by ID
   server.tool(
     'get_abandonment',
-    'Retrieve details of an abandonment by ID with optional field selection',
+    'This tool retrieves detailed information about cart or checkout abandonments by ID. It returns data about abandoned carts including items, prices, customer information (if available), and abandonment timing. You can customize which fields are returned in the response.',
     {
       id: z.string().describe('The ID of the abandonment to retrieve'),
       fields: z.object({}).passthrough().optional().describe('Optional. Specific fields to retrieve. If not provided, default fields will be fetched.')

@@ -7,7 +7,7 @@ export function registerProductTools(server: ShopifyServer) {
   // Tool for creating a product structure with options (always in DRAFT status)
   server.tool(
     'create_product',
-    'Create a product structure with options (e.g., Color, Size) in DRAFT status. Does not create variants with prices. Use productVariantsBulkCreate for that.', 
+    'This tool creates a product structure with options (e.g., Color, Size) in DRAFT status. It handles product title, description, vendor, type, tags, and options configuration, but does not create variants with prices. Use this as the first step in product creation.', 
     {
       name: z.string().describe('The name (title) of the product'),
       description: z.string().optional().describe('Product description (HTML is supported)'),
@@ -197,7 +197,7 @@ export function registerProductTools(server: ShopifyServer) {
   // Create a combined tool for browsing products with inventory information
   server.tool(
     'browse_products',
-    'Browse products with inventory information',
+    'This tool retrieves a list of products with optional inventory information. It supports pagination and provides key product details like title, description, images, variants, and inventory levels. When provided with a specific product_id, it returns detailed information for that single product.',
     {
       limit: z.number().optional().describe('Number of products to retrieve (default: 10)'),
       include_inventory: z.boolean().optional().describe('Whether to include detailed inventory information (default: false)'),
@@ -564,7 +564,7 @@ export function registerProductTools(server: ShopifyServer) {
   // Tool to update the price of a single product variant
   server.tool(
     'update_variant_price',
-    'Updates the price and/or compare-at price of a specific product variant.',
+    'This tool updates the price and/or compare-at price of a specific product variant. It can set a new regular price, add/update a compare-at price, or remove a compare-at price by passing null or an empty string.',
     {
       variant_id: z.string().describe('The Global ID (GID) of the product variant to update (e.g., \'gid://shopify/ProductVariant/98765\')'),
       new_price: z.string().optional().describe('The new price for the variant. If omitted, price is unchanged.'),

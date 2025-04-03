@@ -7,7 +7,7 @@ export function registerInventoryTools(server: ShopifyServer) {
   // Tool for retrieving inventory items with optional filtering
   server.tool(
     'list_inventory_items',
-    'List inventory items with optional filtering by SKU',
+    'This tool retrieves a list of inventory items with optional filtering by SKU. It supports pagination and provides inventory details like available quantities, costs, and locations where items are stocked.',
     {
       limit: z.number().optional().describe('Number of inventory items to retrieve (default: 10, max: 50)'),
       sku_filter: z.string().optional().describe('Filter inventory items by SKU or partial SKU (e.g., "XYZ-12345")'),
@@ -162,7 +162,7 @@ export function registerInventoryTools(server: ShopifyServer) {
   // Tool for retrieving a specific inventory item by ID or SKU with detailed information
   server.tool(
     'get_inventory_item',
-    'Get detailed information about a specific inventory item by ID or SKU',
+    'This tool retrieves detailed information about a specific inventory item by ID or SKU. It returns comprehensive inventory data including tracked status, available quantities across all locations, and associated variant information.',
     {
       id: z.string().optional().describe('The ID of the inventory item (e.g., "gid://shopify/InventoryItem/12345")'),
       sku: z.string().optional().describe('The SKU of the inventory item (e.g., "XYZ-12345")'),
@@ -372,7 +372,7 @@ export function registerInventoryTools(server: ShopifyServer) {
   // Tool for updating inventory quantities at specific locations
   server.tool(
     'update_inventory_quantity',
-    'Update the available quantity of an inventory item at a specific location',
+    'This tool updates the available quantity of an inventory item at a specific location. It accepts inventory item ID, location ID, and the new available quantity, returning the updated inventory level after adjustment.',
     {
       inventory_item_id: z.string().describe('The ID of the inventory item (e.g., "gid://shopify/InventoryItem/12345")'),
       location_id: z.string().describe('The ID of the location (e.g., "gid://shopify/Location/12345")'),

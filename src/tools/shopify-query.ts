@@ -8,6 +8,7 @@ import { ShopifyServer } from '../types.js';
 export function registerQueryTool(server: ShopifyServer) {
   server.tool(
     'query_shopify',
+    'This tool executes custom GraphQL queries or mutations against the Shopify Admin API. It allows for complete flexibility to access any Shopify Admin API endpoint not covered by the specialized tools, with options to pass variables and enable mutation operations.',
     {
       query: z.string().describe('The GraphQL query or mutation to execute'),
       variables: z.record(z.any()).optional().describe('Optional: Variables for the GraphQL query'),

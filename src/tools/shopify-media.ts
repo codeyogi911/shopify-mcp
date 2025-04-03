@@ -8,7 +8,7 @@ export function registerMediaTools(server: ShopifyServer) {
   // Tool for uploading an image from a URL
   server.tool(
     'upload_image_from_url',
-    'Upload an image from a public URL to the Shopify CDN Files section.',
+    'This tool uploads an image from a public URL to the Shopify CDN Files section. It handles the transfer of image data to Shopify\'s servers, allowing you to specify alt text and optional filename for the uploaded image.',
     {
       image_url: z.string().url().describe('The public URL of the image to upload.'),
       alt_text: z.string().optional().describe('Descriptive alt text for the image.'),

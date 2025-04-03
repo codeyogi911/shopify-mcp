@@ -6,7 +6,7 @@ export function registerOrdersTools(server: ShopifyServer) {
   // Create a tool for browsing orders
   server.tool(
     'browse_orders',
-    'Browse Shopify orders',
+    'This tool retrieves Shopify orders with powerful filtering options. It supports filtering by status, date range, customer email, financial status, fulfillment status, and allows searching by order number or customer details. When provided with a specific order_id, it returns detailed information for that single order.',
     {
       limit: z.number().optional().describe('Number of orders to retrieve (default: 10)'),
       status: z.enum(['any', 'open', 'closed', 'cancelled']).optional().describe('Filter orders by status (default: any)'),

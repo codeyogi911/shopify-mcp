@@ -5,6 +5,7 @@ export function registerCustomerTools(server: any) {
   // Create a tool for browsing customers and their spend
   server.tool(
     'browse_customers',
+    'This tool retrieves customer information with spending data and advanced filtering options. It supports sorting by multiple fields, filtering by minimum/maximum spend, and returns detailed customer profiles. When provided with a specific customer_id, it returns comprehensive information for that single customer.',
     {
       limit: z.number().optional().describe('Number of customers to retrieve (default: 10)'),
       customer_id: z.string().optional().describe('ID of a specific customer to view (overrides limit)'),
