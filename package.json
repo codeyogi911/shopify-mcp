@@ -23,8 +23,8 @@
     "model-context-protocol",
     "ai"
   ],
-  "author": "Shashwat Jain",
-  "license": "ISC",
+  "author": "",
+  "license": "MIT",
   "description": "A Model Context Protocol server for Shopify GraphQL API",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
